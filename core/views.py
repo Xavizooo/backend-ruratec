@@ -167,3 +167,37 @@ def confirmar_pago(request, pk):
             return Response({"message": "Pago confirmado", "estado": "pagado"})
 
     return Response({"error": "Pago no aprobado"}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT'])
+def perfil_usuario(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    user = request.user
+    perfil = Perfil.objects.filter(user=user).first()
+
+    if request.method == 'GET':
+        return Response({
+            'id': user.pk,
+            'nombre': user.first_name,
+            'apellido': user.last_name,
+            'email': user.email,
+            'telefono': perfil.telefono if perfil else None,
+            'rol': perfil.rol if perfil else None,
+            'ubicacion': perfil.ubicacion if perfil else None,
+            'foto': request.build_absolute_uri(perfil.foto.url) if perfil and perfil.foto else None,
+        })
+
+    if request.method == 'PUT':
+        user.first_name = request.data.get('nombre', user.first_name)
+        user.last_name = request.data.get('apellido', user.last_name)
+        user.save()
+
+        if perfil:
+            perfil.telefono = request.data.get('telefono', perfil.telefono)
+            perfil.ubicacion = request.data.get('ubicacion', perfil.ubicacion)
+            if 'foto' in request.FILES:
+                perfil.foto = request.FILES['foto']
+            perfil.save()
+
+        return Response({"message": "Perfil actualizado correctamente"})

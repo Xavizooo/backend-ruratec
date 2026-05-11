@@ -58,3 +58,5 @@ class Negociacion(models.Model):
 
     def __str__(self):
         return f"{self.comerciante.username} - {self.publicacion.producto} - {self.estado}"
+
+foto = models.ImageField(upload_to='perfiles/', blank=True, null=True)
