@@ -1,0 +1,1 @@
+web: gunicorn ruratec_backend.wsgi --log-file -
