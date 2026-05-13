@@ -91,11 +91,12 @@ cloudinary.config(
     secure=True
 )
 
+# Cloudinary — lee desde variable de entorno
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dd0vkpwtf',
-    'API_KEY': '474565727318733',
-    'API_SECRET': 'WhFMV9nMeYiNqhBrlDoJqt5M-Wk',
+    'CLOUDINARY_URL': os.environ.get('CLOUDINARY_URL')
 }
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
