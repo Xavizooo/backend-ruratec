@@ -38,10 +38,11 @@ from .models import Perfil, Publicacion
 class PublicacionSerializer(serializers.ModelSerializer):
     vendedor_nombre = serializers.SerializerMethodField()
     vendedor_telefono = serializers.SerializerMethodField()
+    imagen_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Publicacion
-        fields = ['id', 'vendedor', 'vendedor_nombre', 'vendedor_telefono', 'producto', 'descripcion', 'precio', 'unidad', 'stock', 'ubicacion', 'imagen', 'creado_en','stock_unidad']
+        fields = ['id', 'vendedor', 'vendedor_nombre', 'vendedor_telefono', 'producto', 'descripcion', 'precio', 'unidad', 'stock', 'stock_unidad', 'ubicacion', 'imagen', 'imagen_url', 'creado_en']
         read_only_fields = ['vendedor', 'creado_en']
 
     def get_vendedor_nombre(self, obj):
@@ -50,8 +51,11 @@ class PublicacionSerializer(serializers.ModelSerializer):
     def get_vendedor_telefono(self, obj):
         perfil = Perfil.objects.filter(user=obj.vendedor).first()
         return perfil.telefono if perfil else None
-    
-from .models import Perfil, Publicacion, VisitaPublicacion
+
+    def get_imagen_url(self, obj):
+        if obj.imagen:
+            return obj.imagen.url
+        return None
 
 class VisitaSerializer(serializers.ModelSerializer):
     comerciante_nombre = serializers.SerializerMethodField()
