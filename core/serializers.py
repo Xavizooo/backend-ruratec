@@ -56,10 +56,11 @@ from .models import Perfil, Publicacion, VisitaPublicacion
 class VisitaSerializer(serializers.ModelSerializer):
     comerciante_nombre = serializers.SerializerMethodField()
     comerciante_telefono = serializers.SerializerMethodField()
+    comerciante_foto = serializers.SerializerMethodField()  # ✅ nuevo
 
     class Meta:
         model = VisitaPublicacion
-        fields = ['id', 'comerciante', 'comerciante_nombre', 'comerciante_telefono', 'visitado_en']
+        fields = ['id', 'comerciante', 'comerciante_nombre', 'comerciante_telefono', 'comerciante_foto', 'visitado_en']  # ✅ agregar aquí también
 
     def get_comerciante_nombre(self, obj):
         return f"{obj.comerciante.first_name} {obj.comerciante.last_name}".strip()
@@ -67,6 +68,13 @@ class VisitaSerializer(serializers.ModelSerializer):
     def get_comerciante_telefono(self, obj):
         perfil = Perfil.objects.filter(user=obj.comerciante).first()
         return perfil.telefono if perfil else None
+
+    def get_comerciante_foto(self, obj):  # ✅ nuevo método
+        perfil = Perfil.objects.filter(user=obj.comerciante).first()
+        if perfil and perfil.foto:
+            request = self.context.get('request')
+            return request.build_absolute_uri(perfil.foto.url) if request else perfil.foto.url
+        return None
     
 from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion
 
@@ -84,3 +92,13 @@ class NegociacionSerializer(serializers.ModelSerializer):
 
     def get_comerciante_nombre(self, obj):
         return f"{obj.comerciante.first_name} {obj.comerciante.last_name}".strip()
+
+from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion, Favorito
+
+class FavoritoSerializer(serializers.ModelSerializer):
+    publicacion_detalle = PublicacionSerializer(source='publicacion', read_only=True)
+
+    class Meta:
+        model = Favorito
+        fields = ['id', 'publicacion', 'publicacion_detalle', 'creado_en']
+        read_only_fields = ['creado_en']

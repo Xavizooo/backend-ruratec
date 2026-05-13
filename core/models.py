@@ -10,6 +10,8 @@ class Perfil(models.Model):
     telefono = models.CharField(max_length=15, blank=True, null=True)
     rol = models.CharField(max_length=20, choices=ROLES, default='Agricultor')
     ubicacion = models.CharField(max_length=100, blank=True, null=True)
+    foto = models.ImageField(upload_to='perfiles/', blank=True, null=True)
+    push_token = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self):
         return f"Perfil de {self.user.username} - {self.rol}"
@@ -59,4 +61,13 @@ class Negociacion(models.Model):
     def __str__(self):
         return f"{self.comerciante.username} - {self.publicacion.producto} - {self.estado}"
 
-foto = models.ImageField(upload_to='perfiles/', blank=True, null=True)
+class Favorito(models.Model):
+    comerciante = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favoritos')
+    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, related_name='favoritos')
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('comerciante', 'publicacion')  # No duplicados
+
+    def __str__(self):
+        return f"{self.comerciante.username} ❤️ {self.publicacion.producto}"

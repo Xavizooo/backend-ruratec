@@ -5,6 +5,7 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from .serializers import UserSerializer
 from .models import Perfil
+from .notificaciones import enviar_notificacion
 
 @api_view(['POST'])
 def registrar_usuario(request):
@@ -101,7 +102,7 @@ def ver_visitas(request, pk):
         return Response({"error": "No autorizado"}, status=status.HTTP_403_FORBIDDEN)
     
     visitas = VisitaPublicacion.objects.filter(publicacion=publicacion)
-    serializer = VisitaSerializer(visitas, many=True)
+    serializer = VisitaSerializer(visitas, many=True, context={'request': request})
     return Response(serializer.data)
 
 
@@ -201,3 +202,63 @@ def perfil_usuario(request):
             perfil.save()
 
         return Response({"message": "Perfil actualizado correctamente"})
+    
+from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion, Favorito
+from .serializers import UserSerializer, PublicacionSerializer, VisitaSerializer, NegociacionSerializer, FavoritoSerializer
+
+@api_view(['GET'])
+def listar_favoritos(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    favoritos = Favorito.objects.filter(comerciante=request.user).order_by('-creado_en')
+    serializer = FavoritoSerializer(favoritos, many=True, context={'request': request})
+    return Response(serializer.data)
+
+@api_view(['POST'])
+def agregar_favorito(request, pk):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    try:
+        publicacion = Publicacion.objects.get(pk=pk)
+    except Publicacion.DoesNotExist:
+        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
+    
+    favorito, created = Favorito.objects.get_or_create(
+        comerciante=request.user,
+        publicacion=publicacion
+    )
+    
+    if created:
+        return Response({"message": "Agregado a favoritos"}, status=status.HTTP_201_CREATED)
+    return Response({"message": "Ya está en favoritos"}, status=status.HTTP_200_OK)
+
+@api_view(['DELETE'])
+def eliminar_favorito(request, pk):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    try:
+        favorito = Favorito.objects.get(pk=pk, comerciante=request.user)
+    except Favorito.DoesNotExist:
+        return Response({"error": "No encontrado"}, status=status.HTTP_404_NOT_FOUND)
+    
+    favorito.delete()
+    return Response({"message": "Eliminado de favoritos"}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def guardar_push_token(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    token = request.data.get('push_token')
+    if not token:
+        return Response({"error": "Token requerido"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    perfil = Perfil.objects.filter(user=request.user).first()
+    if perfil:
+        perfil.push_token = token
+        perfil.save()
+    
+    return Response({"message": "Token guardado"})
