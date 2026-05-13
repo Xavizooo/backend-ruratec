@@ -1,5 +1,8 @@
 import os
 import dj_database_url
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,7 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'cloudinary_storage',        
+    'cloudinary_storage',
     'django.contrib.staticfiles',
     'cloudinary',
     'rest_framework',
@@ -80,7 +83,14 @@ STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Cloudinary
+# Cloudinary config
+cloudinary.config(
+    cloud_name='dd0vkpwtf',
+    api_key='474565727318733',
+    api_secret='WhFMV9nMeYiNqhBrlDoJqt5M-Wk',
+    secure=True
+)
+
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': 'dd0vkpwtf',
     'API_KEY': '474565727318733',
@@ -103,10 +113,3 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
     ],
 }
-
-import cloudinary
-cloudinary.config(
-    cloud_name='dd0vkpwtf',
-    api_key='474565727318733',
-    api_secret='WhFMV9nMeYiNqhBrlDoJqt5M-Wk'
-)
