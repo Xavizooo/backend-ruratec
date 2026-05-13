@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from cloudinary.models import CloudinaryField
+
 
 class Perfil(models.Model):
     ROLES = [
@@ -10,11 +12,11 @@ class Perfil(models.Model):
     telefono = models.CharField(max_length=15, blank=True, null=True)
     rol = models.CharField(max_length=20, choices=ROLES, default='Agricultor')
     ubicacion = models.CharField(max_length=100, blank=True, null=True)
-    foto = models.ImageField(upload_to='perfiles/', blank=True, null=True)
-    push_token = models.CharField(max_length=200, blank=True, null=True)
+    foto = CloudinaryField('foto', blank=True, null=True)
 
     def __str__(self):
         return f"Perfil de {self.user.username} - {self.rol}"
+
 
 class Publicacion(models.Model):
     vendedor = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -23,7 +25,7 @@ class Publicacion(models.Model):
     precio = models.IntegerField()
     unidad = models.CharField(max_length=50)
     ubicacion = models.CharField(max_length=100)
-    imagen = models.ImageField(upload_to='publicaciones/', blank=True, null=True)
+    imagen = CloudinaryField('imagen', blank=True, null=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     stock = models.IntegerField(default=0)
     stock_unidad = models.CharField(max_length=50, blank=True, null=True)
@@ -31,25 +33,26 @@ class Publicacion(models.Model):
     def __str__(self):
         return f"{self.producto} - {self.vendedor.username}"
 
+
 class VisitaPublicacion(models.Model):
     publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, related_name='visitas')
     comerciante = models.ForeignKey(User, on_delete=models.CASCADE, related_name='visitas')
     visitado_en = models.DateTimeField(auto_now_add=True)
-    
 
     class Meta:
-        unique_together = ('publicacion', 'comerciante')  # Un comerciante solo se registra una vez por publicación
+        unique_together = ('publicacion', 'comerciante')
 
     def __str__(self):
         return f"{self.comerciante.username} vio {self.publicacion.producto}"
-    
+
+
 class Negociacion(models.Model):
     ESTADOS = [
         ('pendiente', 'Pendiente'),
         ('pagado', 'Pagado'),
         ('cancelado', 'Cancelado'),
     ]
-    
+
     publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, related_name='negociaciones')
     comerciante = models.ForeignKey(User, on_delete=models.CASCADE, related_name='negociaciones')
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
@@ -61,13 +64,14 @@ class Negociacion(models.Model):
     def __str__(self):
         return f"{self.comerciante.username} - {self.publicacion.producto} - {self.estado}"
 
+
 class Favorito(models.Model):
     comerciante = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favoritos')
     publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, related_name='favoritos')
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('comerciante', 'publicacion')  # No duplicados
+        unique_together = ('comerciante', 'publicacion')
 
     def __str__(self):
         return f"{self.comerciante.username} ❤️ {self.publicacion.producto}"
