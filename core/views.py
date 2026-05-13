@@ -262,3 +262,17 @@ def guardar_push_token(request):
         perfil.save()
     
     return Response({"message": "Token guardado"})
+
+@api_view(['POST'])
+def crear_publicacion(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    print("FILES:", request.FILES)  # ✅ agrega esto
+    print("DATA:", request.data)    # ✅ y esto
+    
+    serializer = PublicacionSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(vendedor=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

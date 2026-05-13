@@ -103,3 +103,10 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
     ],
 }
+
+import cloudinary
+cloudinary.config(
+    cloud_name='dd0vkpwtf',
+    api_key='474565727318733',
+    api_secret='WhFMV9nMeYiNqhBrlDoJqt5M-Wk'
+)
