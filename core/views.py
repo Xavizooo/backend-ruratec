@@ -286,57 +286,104 @@ from rest_framework.response import Response
 @permission_classes([IsAuthenticated])
 def canasta_familiar(request):
     productos_referencia = [
-        # Tubérculos
-        {"producto": "papa", "nombre_display": "Papa pastusa", "precio": 1500, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "papa_criolla", "nombre_display": "Papa criolla", "precio": 2500, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "arracacha", "nombre_display": "Arracacha", "precio": 2300, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
 
-        # Cereales y granos
-        {"producto": "arroz", "nombre_display": "Arroz corriente", "precio": 1800, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "lenteja", "nombre_display": "Lenteja", "precio": 4200, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "garbanzo", "nombre_display": "Garbanzo", "precio": 5500, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "frijol", "nombre_display": "Fríjol verde", "precio": 6000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        # ── TUBÉRCULOS ──────────────────────────────────────────
+        {"producto": "papa_pastusa",     "nombre_display": "Papa pastusa",       "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "papa_criolla",     "nombre_display": "Papa criolla",        "precio": 2500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "papa_r12",         "nombre_display": "Papa R-12",           "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "papa_capiro",      "nombre_display": "Papa capiro",         "precio": 1600,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "papa_negra",       "nombre_display": "Papa negra",          "precio": 2000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "arracacha",        "nombre_display": "Arracacha",           "precio": 2300,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "yuca",             "nombre_display": "Yuca",                "precio": 1400,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "name",             "nombre_display": "Ñame",                "precio": 2200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "batata",           "nombre_display": "Batata",              "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
 
-        # Hortalizas
-        {"producto": "zanahoria", "nombre_display": "Zanahoria", "precio": 1500, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "cebolla_blanca", "nombre_display": "Cebolla cabezona blanca", "precio": 1500, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "cebolla_roja", "nombre_display": "Cebolla cabezona roja", "precio": 1900, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "cebolla_junca", "nombre_display": "Cebolla junca", "precio": 3333, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "tomate", "nombre_display": "Tomate chonto", "precio": 2800, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "mazorca", "nombre_display": "Mazorca", "precio": 1200, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "pepino", "nombre_display": "Pepino cohombro", "precio": 1800, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "auyama", "nombre_display": "Auyama", "precio": 1400, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "repollo", "nombre_display": "Repollo", "precio": 1200, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "remolacha", "nombre_display": "Remolacha", "precio": 1300, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "espinaca", "nombre_display": "Espinaca", "precio": 3500, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "lechuga", "nombre_display": "Lechuga", "precio": 2200, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "habichuela", "nombre_display": "Habichuela", "precio": 5600, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "arveja", "nombre_display": "Arveja verde", "precio": 6400, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "cilantro", "nombre_display": "Cilantro", "precio": 6000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        # ── CEREALES Y GRANOS ────────────────────────────────────
+        {"producto": "arroz",            "nombre_display": "Arroz corriente",     "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "arroz_diana",      "nombre_display": "Arroz Diana",         "precio": 2200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "lenteja",          "nombre_display": "Lenteja",             "precio": 4200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "garbanzo",         "nombre_display": "Garbanzo",            "precio": 5500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "frijol_verde",     "nombre_display": "Fríjol verde",        "precio": 6000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "frijol_cargamanto","nombre_display": "Fríjol cargamanto",   "precio": 7000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "maiz",             "nombre_display": "Maíz amarillo",       "precio": 1200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "cuchuco_trigo",    "nombre_display": "Cuchuco de trigo",    "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "harina_trigo",     "nombre_display": "Harina de trigo",     "precio": 2800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "pasta",            "nombre_display": "Pasta",               "precio": 3800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
 
-        # Frutas
-        {"producto": "platano", "nombre_display": "Plátano hartón", "precio": 1400, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "banano", "nombre_display": "Banano Urabá", "precio": 2200, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "limon_tahiti", "nombre_display": "Limón Tahití", "precio": 4000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "limon_comun", "nombre_display": "Limón común", "precio": 1071, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "naranja_valencia", "nombre_display": "Naranja valencia", "precio": 2600, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "mandarina", "nombre_display": "Mandarina arrayana", "precio": 10000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "aguacate_hass", "nombre_display": "Aguacate Hass", "precio": 7500, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "pina", "nombre_display": "Piña", "precio": 1800, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "papaya", "nombre_display": "Papaya", "precio": 2000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "gulupa", "nombre_display": "Gulupa", "precio": 5000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "tangelo", "nombre_display": "Tangelo", "precio": 4200, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        # ── HORTALIZAS ───────────────────────────────────────────
+        {"producto": "zanahoria",        "nombre_display": "Zanahoria",           "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "cebolla_blanca",   "nombre_display": "Cebolla blanca",      "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "cebolla_roja",     "nombre_display": "Cebolla roja",        "precio": 1900,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "cebolla_junca",    "nombre_display": "Cebolla junca",       "precio": 3333,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "tomate_chonto",    "nombre_display": "Tomate chonto",       "precio": 2800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "tomate_larga_vida","nombre_display": "Tomate larga vida",   "precio": 3200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "mazorca",          "nombre_display": "Mazorca",             "precio": 1200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "pepino_comun",     "nombre_display": "Pepino común",        "precio": 1600,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "pepino_cohombro",  "nombre_display": "Pepino cohombro",     "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "auyama",           "nombre_display": "Auyama",              "precio": 1400,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "repollo",          "nombre_display": "Repollo",             "precio": 1200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "remolacha",        "nombre_display": "Remolacha",           "precio": 1300,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "espinaca",         "nombre_display": "Espinaca",            "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "lechuga",          "nombre_display": "Lechuga",             "precio": 2200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "habichuela",       "nombre_display": "Habichuela",          "precio": 5600,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "arveja_verde",     "nombre_display": "Arveja verde",        "precio": 6400,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "cilantro",         "nombre_display": "Cilantro",            "precio": 6000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "acelga",           "nombre_display": "Acelga",              "precio": 2500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "apio",             "nombre_display": "Apio",                "precio": 2800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "coliflor",         "nombre_display": "Coliflor",            "precio": 3000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "brocoli",          "nombre_display": "Brócoli",             "precio": 3200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "ajo",              "nombre_display": "Ajo rosado",          "precio": 12000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "rabano",           "nombre_display": "Rábano rojo",         "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "alcachofa",        "nombre_display": "Alcachofa",           "precio": 4000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "haba_verde",       "nombre_display": "Haba verde",          "precio": 4500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "pimenton",         "nombre_display": "Pimentón",            "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
 
-        # Proteínas y lácteos
-        {"producto": "huevo", "nombre_display": "Huevo rojo A", "precio": 450, "fecha": "Mayo 2026", "unidad": "und", "fuente": "Corabastos"},
-        {"producto": "pollo", "nombre_display": "Pollo entero", "precio": 7200, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "leche", "nombre_display": "Leche pasteurizada", "precio": 3000, "fecha": "Mayo 2026", "unidad": "lt", "fuente": "Corabastos"},
-        {"producto": "queso", "nombre_display": "Queso", "precio": 12000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        {"producto": "panela", "nombre_display": "Panela", "precio": 3500, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        # ── FRUTAS ───────────────────────────────────────────────
+        {"producto": "platano_harton",   "nombre_display": "Plátano hartón",      "precio": 1400,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "platano_colicero", "nombre_display": "Plátano colicero",    "precio": 1200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "banano_uraba",     "nombre_display": "Banano Urabá",        "precio": 2200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "banano_criollo",   "nombre_display": "Banano criollo",      "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "limon_tahiti",     "nombre_display": "Limón Tahití",        "precio": 4000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "limon_comun",      "nombre_display": "Limón común",         "precio": 3850,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "naranja_valencia", "nombre_display": "Naranja Valencia",    "precio": 2600,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "naranja_armenia",  "nombre_display": "Naranja Armenia",     "precio": 2200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "mandarina",        "nombre_display": "Mandarina arrayana",  "precio": 10000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "tangelo",          "nombre_display": "Tangelo",             "precio": 4200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "aguacate_hass",    "nombre_display": "Aguacate Hass",       "precio": 7500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "aguacate_papelillo","nombre_display": "Aguacate papelillo", "precio": 10500, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "pina",             "nombre_display": "Piña",                "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "papaya",           "nombre_display": "Papaya",              "precio": 2000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "gulupa",           "nombre_display": "Gulupa",              "precio": 5000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "maracuya",         "nombre_display": "Maracuyá",            "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "mango_tommy",      "nombre_display": "Mango Tommy",         "precio": 3000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "mango_comun",      "nombre_display": "Mango común",         "precio": 2000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "melon",            "nombre_display": "Melón",               "precio": 2500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "sandia",           "nombre_display": "Sandía",              "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "fresa",            "nombre_display": "Fresa",               "precio": 6000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "uva_isabela",      "nombre_display": "Uva Isabella",        "precio": 5000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "mora",             "nombre_display": "Mora",                "precio": 5500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "feijoa",           "nombre_display": "Feijoa",              "precio": 4500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "lulo",             "nombre_display": "Lulo",                "precio": 4000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "tomate_arbol",     "nombre_display": "Tomate de árbol",     "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "guanabana",        "nombre_display": "Guanábana",           "precio": 4000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "curuba",           "nombre_display": "Curuba",              "precio": 3800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "granadilla",       "nombre_display": "Granadilla",          "precio": 5500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "pitahaya",         "nombre_display": "Pitahaya amarilla",   "precio": 15000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "coco",             "nombre_display": "Coco",                "precio": 3000,  "fecha": "Mayo 2026", "unidad": "und", "fuente": "Corabastos"},
 
-        # Procesados
-        {"producto": "aceite", "nombre_display": "Aceite vegetal", "precio": 9000, "fecha": "Mayo 2026", "unidad": "lt", "fuente": "Corabastos"},
-        {"producto": "pasta", "nombre_display": "Pasta", "precio": 3800, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        # ── PROTEÍNAS Y LÁCTEOS ──────────────────────────────────
+        {"producto": "huevo",            "nombre_display": "Huevo rojo A",        "precio": 450,   "fecha": "Mayo 2026", "unidad": "und", "fuente": "Corabastos"},
+        {"producto": "pollo",            "nombre_display": "Pollo entero",        "precio": 7200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "carne_res",        "nombre_display": "Carne de res",        "precio": 18000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "pescado_mojarra",  "nombre_display": "Mojarra",             "precio": 12000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "leche",            "nombre_display": "Leche pasteurizada",  "precio": 3000,  "fecha": "Mayo 2026", "unidad": "lt", "fuente": "Corabastos"},
+        {"producto": "queso",            "nombre_display": "Queso campesino",     "precio": 12000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "panela",           "nombre_display": "Panela",              "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+
+        # ── PROCESADOS ───────────────────────────────────────────
+        {"producto": "aceite",           "nombre_display": "Aceite vegetal",      "precio": 9000,  "fecha": "Mayo 2026", "unidad": "lt", "fuente": "Corabastos"},
+        {"producto": "azucar",           "nombre_display": "Azúcar blanca",       "precio": 3200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
+        {"producto": "sal",              "nombre_display": "Sal",                 "precio": 1200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
     ]
 
     try:
@@ -354,4 +401,8 @@ def canasta_familiar(request):
     except Exception:
         resultados = productos_referencia
 
-    return Response({"productos": resultados, "mercado": "Corabastos - Bogotá", "fecha_actualizacion": "Mayo 2026"})
+    return Response({
+        "productos": resultados,
+        "mercado": "Corabastos - Bogotá",
+        "fecha_actualizacion": "Mayo 2026"
+    })
