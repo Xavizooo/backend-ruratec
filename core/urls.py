@@ -23,4 +23,5 @@ urlpatterns = [
     path('favoritos/', listar_favoritos, name='listar_favoritos'),
     path('publicaciones/<int:pk>/favorito/', agregar_favorito, name='agregar_favorito'),
     path('favoritos/<int:pk>/eliminar/', eliminar_favorito, name='eliminar_favorito'),
+    path("api/canasta/", views.canasta_familiar, name="canasta-familiar"),
 ]

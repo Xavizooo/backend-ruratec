@@ -276,3 +276,18 @@ def crear_publicacion(request):
         serializer.save(vendedor=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+from .sipsa import consultar_precio_sipsa, PRODUCTOS_CANASTA
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def canasta_familiar(request):
+    resultados = []
+    for nombre, clave in PRODUCTOS_CANASTA:
+        data = consultar_precio_sipsa(clave)
+        data["nombre_display"] = nombre
+        resultados.append(data)
+    return Response({"productos": resultados, "mercado": "Corabastos - Bogotá"})
