@@ -5,7 +5,8 @@ from .views import (
     registrar_visita, ver_visitas,
     crear_negociacion, confirmar_pago,
     perfil_usuario, guardar_push_token,
-    listar_favoritos, agregar_favorito, eliminar_favorito
+    listar_favoritos, agregar_favorito, eliminar_favorito,
+    canasta_familiar,
 )
 
 urlpatterns = [
@@ -23,5 +24,5 @@ urlpatterns = [
     path('favoritos/', listar_favoritos, name='listar_favoritos'),
     path('publicaciones/<int:pk>/favorito/', agregar_favorito, name='agregar_favorito'),
     path('favoritos/<int:pk>/eliminar/', eliminar_favorito, name='eliminar_favorito'),
-    path("api/canasta/", views.canasta_familiar, name="canasta-familiar"),
+    path("canasta/", canasta_familiar, name="canasta-familiar"),
 ]
