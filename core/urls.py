@@ -11,7 +11,6 @@ from .views import (
     listar_notificaciones, marcar_leida, marcar_todas_leidas,
     responder_negociacion, negociaciones_agricultor,
     estado_negociacion, cancelar_negociacion)
-)
 
 urlpatterns = [
     path('login/', CustomAuthToken.as_view(), name='api_login'),
