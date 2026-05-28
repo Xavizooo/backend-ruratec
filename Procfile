@@ -1,0 +1,1 @@
+web: python manage.py migrate && gunicorn ruratec_backend.wsgi --log-file -
