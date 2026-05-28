@@ -1,11 +1,25 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
-from .serializers import UserSerializer
-from .models import Perfil
+from django.utils import timezone
+from datetime import timedelta
+import uuid
+import requests
+
+from .serializers import (
+    UserSerializer, PublicacionSerializer, VisitaSerializer,
+    NegociacionSerializer, FavoritoSerializer, NotificacionSerializer
+)
+from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion, Favorito, Notificacion
 from .notificaciones import enviar_notificacion
+
+
+# ─────────────────────────────────────────────
+# AUTH
+# ─────────────────────────────────────────────
 
 @api_view(['POST'])
 def registrar_usuario(request):
@@ -15,16 +29,14 @@ def registrar_usuario(request):
         return Response({"message": "Usuario creado correctamente"}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class CustomAuthToken(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data,
-                                        context={'request': request})
+        serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
-        
         perfil = Perfil.objects.filter(user=user).first()
-        
         return Response({
             'token': token.key,
             'user_id': user.pk,
@@ -34,20 +46,72 @@ class CustomAuthToken(ObtainAuthToken):
             'ubicacion': perfil.ubicacion if perfil else "No definida"
         })
 
-from rest_framework.permissions import IsAuthenticated
-from .serializers import UserSerializer, PublicacionSerializer
-from .models import Perfil, Publicacion
+
+# ─────────────────────────────────────────────
+# PERFIL
+# ─────────────────────────────────────────────
+
+@api_view(['GET', 'PUT'])
+def perfil_usuario(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    user = request.user
+    perfil = Perfil.objects.filter(user=user).first()
+
+    if request.method == 'GET':
+        return Response({
+            'id': user.pk,
+            'nombre': user.first_name,
+            'apellido': user.last_name,
+            'email': user.email,
+            'telefono': perfil.telefono if perfil else None,
+            'rol': perfil.rol if perfil else None,
+            'ubicacion': perfil.ubicacion if perfil else None,
+            'foto': request.build_absolute_uri(perfil.foto.url) if perfil and perfil.foto else None,
+        })
+
+    if request.method == 'PUT':
+        user.first_name = request.data.get('nombre', user.first_name)
+        user.last_name = request.data.get('apellido', user.last_name)
+        user.save()
+        if perfil:
+            perfil.telefono = request.data.get('telefono', perfil.telefono)
+            perfil.ubicacion = request.data.get('ubicacion', perfil.ubicacion)
+            if 'foto' in request.FILES:
+                perfil.foto = request.FILES['foto']
+            perfil.save()
+        return Response({"message": "Perfil actualizado correctamente"})
+
+
+@api_view(['POST'])
+def guardar_push_token(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    token = request.data.get('push_token')
+    if not token:
+        return Response({"error": "Token requerido"}, status=status.HTTP_400_BAD_REQUEST)
+    perfil = Perfil.objects.filter(user=request.user).first()
+    if perfil:
+        perfil.push_token = token
+        perfil.save()
+    return Response({"message": "Token guardado"})
+
+
+# ─────────────────────────────────────────────
+# PUBLICACIONES
+# ─────────────────────────────────────────────
 
 @api_view(['POST'])
 def crear_publicacion(request):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
     serializer = PublicacionSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save(vendedor=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['GET'])
 def listar_publicaciones(request):
@@ -55,77 +119,115 @@ def listar_publicaciones(request):
     serializer = PublicacionSerializer(publicaciones, many=True, context={'request': request})
     return Response(serializer.data)
 
+
 @api_view(['GET'])
 def detalle_publicacion(request, pk):
     try:
         publicacion = Publicacion.objects.get(pk=pk)
     except Publicacion.DoesNotExist:
         return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-    
     serializer = PublicacionSerializer(publicacion, context={'request': request})
     return Response(serializer.data)
 
-from .models import Perfil, Publicacion, VisitaPublicacion
-from .serializers import UserSerializer, PublicacionSerializer, VisitaSerializer
+
+@api_view(['PUT'])
+def editar_publicacion(request, pk):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        publicacion = Publicacion.objects.get(pk=pk, vendedor=request.user)
+    except Publicacion.DoesNotExist:
+        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
+    if timezone.now() > publicacion.creado_en + timedelta(hours=24):
+        return Response({"error": "Ya no puedes editar esta publicación, han pasado más de 24 horas"}, status=status.HTTP_403_FORBIDDEN)
+    tiene_ventas = Negociacion.objects.filter(publicacion=publicacion, estado='pagado').exists()
+    if tiene_ventas:
+        return Response({"error": "No puedes editar esta publicación porque ya tiene ventas"}, status=status.HTTP_403_FORBIDDEN)
+    serializer = PublicacionSerializer(publicacion, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+def eliminar_publicacion(request, pk):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        publicacion = Publicacion.objects.get(pk=pk, vendedor=request.user)
+    except Publicacion.DoesNotExist:
+        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
+    if timezone.now() > publicacion.creado_en + timedelta(hours=24):
+        return Response({"error": "Ya no puedes eliminar esta publicación, han pasado más de 24 horas"}, status=status.HTTP_403_FORBIDDEN)
+    tiene_ventas = Negociacion.objects.filter(publicacion=publicacion, estado='pagado').exists()
+    if tiene_ventas:
+        return Response({"error": "No puedes eliminar esta publicación porque ya tiene ventas"}, status=status.HTTP_403_FORBIDDEN)
+    publicacion.delete()
+    return Response({"message": "Publicación eliminada"}, status=status.HTTP_200_OK)
+
+
+# ─────────────────────────────────────────────
+# VISITAS
+# ─────────────────────────────────────────────
 
 @api_view(['POST'])
 def registrar_visita(request, pk):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
     try:
         publicacion = Publicacion.objects.get(pk=pk)
     except Publicacion.DoesNotExist:
         return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-    
     if publicacion.vendedor == request.user:
         return Response({"message": "Es tu propia publicación"})
-    
-    VisitaPublicacion.objects.get_or_create(
-        publicacion=publicacion,
-        comerciante=request.user
-    )
-    
+    VisitaPublicacion.objects.get_or_create(publicacion=publicacion, comerciante=request.user)
     return Response({"message": "Visita registrada"})
+
 
 @api_view(['GET'])
 def ver_visitas(request, pk):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
     try:
         publicacion = Publicacion.objects.get(pk=pk)
     except Publicacion.DoesNotExist:
         return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-    
     if publicacion.vendedor != request.user:
         return Response({"error": "No autorizado"}, status=status.HTTP_403_FORBIDDEN)
-    
     visitas = VisitaPublicacion.objects.filter(publicacion=publicacion)
     serializer = VisitaSerializer(visitas, many=True, context={'request': request})
     return Response(serializer.data)
 
 
-from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion
-from .serializers import UserSerializer, PublicacionSerializer, VisitaSerializer, NegociacionSerializer
-import uuid
-import requests
+# ─────────────────────────────────────────────
+# NEGOCIACIONES
+# ─────────────────────────────────────────────
 
 @api_view(['POST'])
 def crear_negociacion(request, pk):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-
     try:
         publicacion = Publicacion.objects.get(pk=pk)
     except Publicacion.DoesNotExist:
         return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
 
+    # Evitar crear duplicados si ya tiene una negociación activa para esta publicación
+    negociacion_existente = Negociacion.objects.filter(
+        comerciante=request.user,
+        publicacion=publicacion,
+        estado='esperando'
+    ).first()
+    if negociacion_existente:
+        serializer = NegociacionSerializer(negociacion_existente)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     cantidad = request.data.get('cantidad')
     if not cantidad:
         return Response({"error": "Cantidad requerida"}, status=status.HTTP_400_BAD_REQUEST)
 
-    total = int(cantidad) * publicacion.precio
+    total = float(cantidad) * publicacion.precio
     referencia = f"RURATEC-{uuid.uuid4().hex[:10].upper()}"
 
     negociacion = Negociacion.objects.create(
@@ -134,9 +236,9 @@ def crear_negociacion(request, pk):
         cantidad=cantidad,
         total=total,
         referencia=referencia,
+        estado='esperando',
     )
 
-    # Notificar al agricultor
     Notificacion.objects.create(
         usuario=publicacion.vendedor,
         tipo='negociacion',
@@ -147,11 +249,106 @@ def crear_negociacion(request, pk):
     serializer = NegociacionSerializer(negociacion)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+
+@api_view(['GET'])
+def estado_negociacion(request, pk):
+    """Polling: el comerciante consulta el estado de su negociación."""
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        negociacion = Negociacion.objects.get(pk=pk, comerciante=request.user)
+    except Negociacion.DoesNotExist:
+        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
+    serializer = NegociacionSerializer(negociacion)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+def negociacion_activa_por_publicacion(request, pk):
+    """
+    Devuelve la negociación activa (esperando o aceptado) del comerciante
+    para una publicación específica. Usado al entrar al detalle para redirigir.
+    """
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    negociacion = Negociacion.objects.filter(
+        comerciante=request.user,
+        publicacion_id=pk,
+        estado__in=['esperando', 'aceptado']
+    ).order_by('-creado_en').first()
+
+    if negociacion:
+        serializer = NegociacionSerializer(negociacion)
+        return Response({"activa": True, "negociacion": serializer.data})
+    return Response({"activa": False})
+
+
+@api_view(['POST'])
+def cancelar_negociacion(request, pk):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        negociacion = Negociacion.objects.get(pk=pk, comerciante=request.user)
+    except Negociacion.DoesNotExist:
+        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
+    negociacion.estado = 'cancelado'
+    negociacion.save()
+    return Response({"message": "Negociación cancelada"})
+
+
+@api_view(['PUT'])
+def responder_negociacion(request, pk):
+    """El agricultor acepta o rechaza."""
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        negociacion = Negociacion.objects.get(pk=pk, publicacion__vendedor=request.user)
+    except Negociacion.DoesNotExist:
+        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
+
+    accion = request.data.get('accion')
+
+    if accion == 'aceptar':
+        negociacion.estado = 'aceptado'
+        negociacion.save()
+        Notificacion.objects.create(
+            usuario=negociacion.comerciante,
+            tipo='aceptado',
+            titulo='¡Negociación aceptada! 🎉',
+            mensaje=f'El agricultor aceptó tu negociación de {negociacion.publicacion.producto}. Ya puedes proceder al pago.',
+        )
+        return Response({"message": "Negociación aceptada"})
+
+    elif accion == 'rechazar':
+        negociacion.estado = 'rechazado'
+        negociacion.save()
+        Notificacion.objects.create(
+            usuario=negociacion.comerciante,
+            tipo='rechazado',
+            titulo='Negociación rechazada',
+            mensaje=f'El agricultor rechazó tu negociación de {negociacion.publicacion.producto}.',
+        )
+        return Response({"message": "Negociación rechazada"})
+
+    return Response({"error": "Acción inválida"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def negociaciones_agricultor(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    negociaciones = Negociacion.objects.filter(
+        publicacion__vendedor=request.user
+    ).order_by('-creado_en')
+    serializer = NegociacionSerializer(negociaciones, many=True)
+    return Response(serializer.data)
+
+
 @api_view(['POST'])
 def confirmar_pago(request, pk):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-
     try:
         negociacion = Negociacion.objects.get(pk=pk, comerciante=request.user)
     except Negociacion.DoesNotExist:
@@ -176,110 +373,88 @@ def confirmar_pago(request, pk):
 
     return Response({"error": "Pago no aprobado"}, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET', 'PUT'])
-def perfil_usuario(request):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    user = request.user
-    perfil = Perfil.objects.filter(user=user).first()
 
-    if request.method == 'GET':
-        return Response({
-            'id': user.pk,
-            'nombre': user.first_name,
-            'apellido': user.last_name,
-            'email': user.email,
-            'telefono': perfil.telefono if perfil else None,
-            'rol': perfil.rol if perfil else None,
-            'ubicacion': perfil.ubicacion if perfil else None,
-            'foto': request.build_absolute_uri(perfil.foto.url) if perfil and perfil.foto else None,
-        })
-
-    if request.method == 'PUT':
-        user.first_name = request.data.get('nombre', user.first_name)
-        user.last_name = request.data.get('apellido', user.last_name)
-        user.save()
-
-        if perfil:
-            perfil.telefono = request.data.get('telefono', perfil.telefono)
-            perfil.ubicacion = request.data.get('ubicacion', perfil.ubicacion)
-            if 'foto' in request.FILES:
-                perfil.foto = request.FILES['foto']
-            perfil.save()
-
-        return Response({"message": "Perfil actualizado correctamente"})
-    
-from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion, Favorito
-from .serializers import UserSerializer, PublicacionSerializer, VisitaSerializer, NegociacionSerializer, FavoritoSerializer
+# ─────────────────────────────────────────────
+# FAVORITOS
+# ─────────────────────────────────────────────
 
 @api_view(['GET'])
 def listar_favoritos(request):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
     favoritos = Favorito.objects.filter(comerciante=request.user).order_by('-creado_en')
     serializer = FavoritoSerializer(favoritos, many=True, context={'request': request})
     return Response(serializer.data)
+
 
 @api_view(['POST'])
 def agregar_favorito(request, pk):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
     try:
         publicacion = Publicacion.objects.get(pk=pk)
     except Publicacion.DoesNotExist:
         return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-    
-    favorito, created = Favorito.objects.get_or_create(
-        comerciante=request.user,
-        publicacion=publicacion
-    )
-    
+    favorito, created = Favorito.objects.get_or_create(comerciante=request.user, publicacion=publicacion)
     if created:
         return Response({"message": "Agregado a favoritos"}, status=status.HTTP_201_CREATED)
     return Response({"message": "Ya está en favoritos"}, status=status.HTTP_200_OK)
+
 
 @api_view(['DELETE'])
 def eliminar_favorito(request, pk):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
     try:
         favorito = Favorito.objects.get(pk=pk, comerciante=request.user)
     except Favorito.DoesNotExist:
         return Response({"error": "No encontrado"}, status=status.HTTP_404_NOT_FOUND)
-    
     favorito.delete()
     return Response({"message": "Eliminado de favoritos"}, status=status.HTTP_200_OK)
 
-@api_view(['POST'])
-def guardar_push_token(request):
+
+# ─────────────────────────────────────────────
+# NOTIFICACIONES
+# ─────────────────────────────────────────────
+
+@api_view(['GET'])
+def listar_notificaciones(request):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    token = request.data.get('push_token')
-    if not token:
-        return Response({"error": "Token requerido"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    perfil = Perfil.objects.filter(user=request.user).first()
-    if perfil:
-        perfil.push_token = token
-        perfil.save()
-    
-    return Response({"message": "Token guardado"})
+    notificaciones = Notificacion.objects.filter(usuario=request.user)
+    serializer = NotificacionSerializer(notificaciones, many=True)
+    return Response(serializer.data)
 
-from .sipsa import consultar_precio_sipsa, PRODUCTOS_CANASTA
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
+
+@api_view(['PUT'])
+def marcar_leida(request, pk):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        notif = Notificacion.objects.get(pk=pk, usuario=request.user)
+    except Notificacion.DoesNotExist:
+        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
+    notif.leida = True
+    notif.save()
+    return Response({"message": "Marcada como leída"})
+
+
+@api_view(['PUT'])
+def marcar_todas_leidas(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+    Notificacion.objects.filter(usuario=request.user, leida=False).update(leida=True)
+    return Response({"message": "Todas marcadas como leídas"})
+
+
+# ─────────────────────────────────────────────
+# CANASTA FAMILIAR
+# ─────────────────────────────────────────────
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def canasta_familiar(request):
     productos_referencia = [
-
         # ── TUBÉRCULOS ──────────────────────────────────────────
         {"producto": "papa_pastusa",     "nombre_display": "Papa pastusa",       "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "papa_criolla",     "nombre_display": "Papa criolla",        "precio": 2500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -290,7 +465,6 @@ def canasta_familiar(request):
         {"producto": "yuca",             "nombre_display": "Yuca",                "precio": 1400,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "name",             "nombre_display": "Ñame",                "precio": 2200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "batata",           "nombre_display": "Batata",              "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-
         # ── CEREALES Y GRANOS ────────────────────────────────────
         {"producto": "arroz",            "nombre_display": "Arroz corriente",     "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "arroz_diana",      "nombre_display": "Arroz Diana",         "precio": 2200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -302,7 +476,6 @@ def canasta_familiar(request):
         {"producto": "cuchuco_trigo",    "nombre_display": "Cuchuco de trigo",    "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "harina_trigo",     "nombre_display": "Harina de trigo",     "precio": 2800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "pasta",            "nombre_display": "Pasta",               "precio": 3800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-
         # ── HORTALIZAS ───────────────────────────────────────────
         {"producto": "zanahoria",        "nombre_display": "Zanahoria",           "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "cebolla_blanca",   "nombre_display": "Cebolla blanca",      "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -330,7 +503,6 @@ def canasta_familiar(request):
         {"producto": "alcachofa",        "nombre_display": "Alcachofa",           "precio": 4000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "haba_verde",       "nombre_display": "Haba verde",          "precio": 4500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "pimenton",         "nombre_display": "Pimentón",            "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-
         # ── FRUTAS ───────────────────────────────────────────────
         {"producto": "platano_harton",   "nombre_display": "Plátano hartón",      "precio": 1400,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "platano_colicero", "nombre_display": "Plátano colicero",    "precio": 1200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -363,7 +535,6 @@ def canasta_familiar(request):
         {"producto": "granadilla",       "nombre_display": "Granadilla",          "precio": 5500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "pitahaya",         "nombre_display": "Pitahaya amarilla",   "precio": 15000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "coco",             "nombre_display": "Coco",                "precio": 3000,  "fecha": "Mayo 2026", "unidad": "und", "fuente": "Corabastos"},
-
         # ── PROTEÍNAS Y LÁCTEOS ──────────────────────────────────
         {"producto": "huevo",            "nombre_display": "Huevo rojo A",        "precio": 450,   "fecha": "Mayo 2026", "unidad": "und", "fuente": "Corabastos"},
         {"producto": "pollo",            "nombre_display": "Pollo entero",        "precio": 7200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -372,7 +543,6 @@ def canasta_familiar(request):
         {"producto": "leche",            "nombre_display": "Leche pasteurizada",  "precio": 3000,  "fecha": "Mayo 2026", "unidad": "lt", "fuente": "Corabastos"},
         {"producto": "queso",            "nombre_display": "Queso campesino",     "precio": 12000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "panela",           "nombre_display": "Panela",              "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-
         # ── PROCESADOS ───────────────────────────────────────────
         {"producto": "aceite",           "nombre_display": "Aceite vegetal",      "precio": 9000,  "fecha": "Mayo 2026", "unidad": "lt", "fuente": "Corabastos"},
         {"producto": "azucar",           "nombre_display": "Azúcar blanca",       "precio": 3200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -399,198 +569,3 @@ def canasta_familiar(request):
         "mercado": "Corabastos - Bogotá",
         "fecha_actualizacion": "Mayo 2026"
     })
-    
-from django.utils import timezone
-from datetime import timedelta
-
-@api_view(['PUT'])
-def editar_publicacion(request, pk):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    try:
-        publicacion = Publicacion.objects.get(pk=pk, vendedor=request.user)
-    except Publicacion.DoesNotExist:
-        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-    
-    if timezone.now() > publicacion.creado_en + timedelta(hours=24):
-        return Response({"error": "Ya no puedes editar esta publicación, han pasado más de 24 horas"}, status=status.HTTP_403_FORBIDDEN)
-    
-    tiene_ventas = Negociacion.objects.filter(publicacion=publicacion, estado='pagado').exists()
-    if tiene_ventas:
-        return Response({"error": "No puedes editar esta publicación porque ya tiene ventas"}, status=status.HTTP_403_FORBIDDEN)
-    
-    serializer = PublicacionSerializer(publicacion, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['DELETE'])
-def eliminar_publicacion(request, pk):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    try:
-        publicacion = Publicacion.objects.get(pk=pk, vendedor=request.user)
-    except Publicacion.DoesNotExist:
-        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-    
-    if timezone.now() > publicacion.creado_en + timedelta(hours=24):
-        return Response({"error": "Ya no puedes eliminar esta publicación, han pasado más de 24 horas"}, status=status.HTTP_403_FORBIDDEN)
-    
-    tiene_ventas = Negociacion.objects.filter(publicacion=publicacion, estado='pagado').exists()
-    if tiene_ventas:
-        return Response({"error": "No puedes eliminar esta publicación porque ya tiene ventas"}, status=status.HTTP_403_FORBIDDEN)
-    
-    publicacion.delete()
-    return Response({"message": "Publicación eliminada"}, status=status.HTTP_200_OK)
-
-
-from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion, Favorito, Notificacion
-from .serializers import UserSerializer, PublicacionSerializer, VisitaSerializer, NegociacionSerializer, FavoritoSerializer, NotificacionSerializer
-
-@api_view(['GET'])
-def listar_notificaciones(request):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    notificaciones = Notificacion.objects.filter(usuario=request.user)
-    serializer = NotificacionSerializer(notificaciones, many=True)
-    return Response(serializer.data)
-
-@api_view(['PUT'])
-def marcar_leida(request, pk):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    try:
-        notif = Notificacion.objects.get(pk=pk, usuario=request.user)
-    except Notificacion.DoesNotExist:
-        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-    
-    notif.leida = True
-    notif.save()
-    return Response({"message": "Marcada como leída"})
-
-@api_view(['PUT'])
-def marcar_todas_leidas(request):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    Notificacion.objects.filter(usuario=request.user, leida=False).update(leida=True)
-    return Response({"message": "Todas marcadas como leídas"})
-
-@api_view(['PUT'])
-def responder_negociacion(request, pk):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-
-    try:
-        negociacion = Negociacion.objects.get(pk=pk, publicacion__vendedor=request.user)
-    except Negociacion.DoesNotExist:
-        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-
-    accion = request.data.get('accion')
-
-    if accion == 'aceptar':
-        negociacion.estado = 'pendiente'
-        negociacion.save()
-        Notificacion.objects.create(
-            usuario=negociacion.comerciante,
-            tipo='aceptado',
-            titulo='¡Negociación aceptada! 🎉',
-            mensaje=f'El agricultor aceptó tu negociación de {negociacion.publicacion.producto}. Ya puedes proceder al pago.',
-        )
-        return Response({"message": "Negociación aceptada"})
-
-    elif accion == 'rechazar':
-        negociacion.estado = 'rechazado'
-        negociacion.save()
-        Notificacion.objects.create(
-            usuario=negociacion.comerciante,
-            tipo='rechazado',
-            titulo='Negociación rechazada',
-            mensaje=f'El agricultor rechazó tu negociación de {negociacion.publicacion.producto}.',
-        )
-        return Response({"message": "Negociación rechazada"})
-
-    return Response({"error": "Acción inválida"}, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['GET'])
-def negociaciones_agricultor(request):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    negociaciones = Negociacion.objects.filter(
-        publicacion__vendedor=request.user
-    ).order_by('-creado_en')
-    serializer = NegociacionSerializer(negociaciones, many=True)
-    return Response(serializer.data)
-
-
-# ✅ NUEVO: verificar si el comerciante tiene una negociación pendiente para una publicación
-@api_view(['GET'])
-def negociacion_pendiente(request):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-
-    publicacion_id = request.query_params.get('publicacion_id')
-    if not publicacion_id:
-        return Response({"error": "publicacion_id requerido"}, status=status.HTTP_400_BAD_REQUEST)
-
-    negociacion = Negociacion.objects.filter(
-        comerciante=request.user,
-        publicacion_id=publicacion_id,
-        estado='pagado'
-    ).order_by('-creado_en').first()
-
-    if negociacion:
-        serializer = NegociacionSerializer(negociacion)
-        return Response({"pendiente": True, "negociacion": serializer.data})
-
-    return Response({"pendiente": False})
-
-
-# ✅ NUEVO: cancelar negociación
-@api_view(['POST'])
-def cancelar_negociacion(request, pk):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-
-    try:
-        negociacion = Negociacion.objects.get(pk=pk, comerciante=request.user)
-    except Negociacion.DoesNotExist:
-        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-
-    negociacion.estado = 'cancelado'
-    negociacion.save()
-    return Response({"message": "Negociación cancelada"})
-
-
-@api_view(['GET'])
-def estado_negociacion(request, pk):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    try:
-        negociacion = Negociacion.objects.get(pk=pk, comerciante=request.user)
-    except Negociacion.DoesNotExist:
-        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-    
-    serializer = NegociacionSerializer(negociacion)
-    return Response(serializer.data)
-
-@api_view(['POST'])
-def cancelar_negociacion(request, pk):
-    if not request.user.is_authenticated:
-        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    try:
-        negociacion = Negociacion.objects.get(pk=pk, comerciante=request.user)
-    except Negociacion.DoesNotExist:
-        return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
-    
-    negociacion.estado = 'cancelado'
-    negociacion.save()
-    return Response({"message": "Negociación cancelada"})
