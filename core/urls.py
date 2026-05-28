@@ -39,5 +39,5 @@ urlpatterns = [
     path('notificaciones/<int:pk>/leer/', marcar_leida, name='marcar_leida'),
     path('notificaciones/leer-todas/', marcar_todas_leidas, name='marcar_todas_leidas'),
     path('negociaciones/<int:pk>/estado/', estado_negociacion, name='estado_negociacion'),
-    path('negociaciones/<int:pk>/cancelar/', cancelar_negociacion, name='cancelar_negociacion'),
+p   ath('negociaciones/<int:pk>/cancelar/', cancelar_negociacion, name='cancelar_negociacion'),
 ]
