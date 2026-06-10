@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion
+from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion, Favorito, Notificacion
+
 
 class UserSerializer(serializers.ModelSerializer):
     telefono = serializers.CharField(write_only=True, required=False)
@@ -33,7 +34,7 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
         return user
-from .models import Perfil, Publicacion
+
 
 class PublicacionSerializer(serializers.ModelSerializer):
     vendedor_nombre = serializers.SerializerMethodField()
@@ -57,14 +58,15 @@ class PublicacionSerializer(serializers.ModelSerializer):
             return obj.imagen.url
         return None
 
+
 class VisitaSerializer(serializers.ModelSerializer):
     comerciante_nombre = serializers.SerializerMethodField()
     comerciante_telefono = serializers.SerializerMethodField()
-    comerciante_foto = serializers.SerializerMethodField()  # ✅ nuevo
+    comerciante_foto = serializers.SerializerMethodField()
 
     class Meta:
         model = VisitaPublicacion
-        fields = ['id', 'comerciante', 'comerciante_nombre', 'comerciante_telefono', 'comerciante_foto', 'visitado_en']  # ✅ agregar aquí también
+        fields = ['id', 'comerciante', 'comerciante_nombre', 'comerciante_telefono', 'comerciante_foto', 'visitado_en']
 
     def get_comerciante_nombre(self, obj):
         return f"{obj.comerciante.first_name} {obj.comerciante.last_name}".strip()
@@ -73,14 +75,13 @@ class VisitaSerializer(serializers.ModelSerializer):
         perfil = Perfil.objects.filter(user=obj.comerciante).first()
         return perfil.telefono if perfil else None
 
-    def get_comerciante_foto(self, obj):  # ✅ nuevo método
+    def get_comerciante_foto(self, obj):
         perfil = Perfil.objects.filter(user=obj.comerciante).first()
         if perfil and perfil.foto:
             request = self.context.get('request')
             return request.build_absolute_uri(perfil.foto.url) if request else perfil.foto.url
         return None
-    
-from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion
+
 
 class NegociacionSerializer(serializers.ModelSerializer):
     publicacion_nombre = serializers.SerializerMethodField()
@@ -97,7 +98,6 @@ class NegociacionSerializer(serializers.ModelSerializer):
     def get_comerciante_nombre(self, obj):
         return f"{obj.comerciante.first_name} {obj.comerciante.last_name}".strip()
 
-from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion, Favorito
 
 class FavoritoSerializer(serializers.ModelSerializer):
     publicacion_detalle = PublicacionSerializer(source='publicacion', read_only=True)
@@ -106,10 +106,15 @@ class FavoritoSerializer(serializers.ModelSerializer):
         model = Favorito
         fields = ['id', 'publicacion', 'publicacion_detalle', 'creado_en']
         read_only_fields = ['creado_en']
-        
-from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion, Favorito, Notificacion
+
 
 class NotificacionSerializer(serializers.ModelSerializer):
+    # ✅ Expone el ID de la negociación para poder responder desde notificaciones
+    negociacion_id = serializers.SerializerMethodField()
+
     class Meta:
         model = Notificacion
-        fields = ['id', 'tipo', 'titulo', 'mensaje', 'leida', 'creado_en']
+        fields = ['id', 'tipo', 'titulo', 'mensaje', 'leida', 'creado_en', 'negociacion_id']
+
+    def get_negociacion_id(self, obj):
+        return obj.negociacion.id if obj.negociacion else None

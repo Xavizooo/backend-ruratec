@@ -13,6 +13,7 @@ class Perfil(models.Model):
     rol = models.CharField(max_length=20, choices=ROLES, default='Agricultor')
     ubicacion = models.CharField(max_length=100, blank=True, null=True)
     foto = CloudinaryField('foto', blank=True, null=True)
+    push_token = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self):
         return f"Perfil de {self.user.username} - {self.rol}"
@@ -48,13 +49,13 @@ class VisitaPublicacion(models.Model):
 
 class Negociacion(models.Model):
     ESTADOS = [
-    ('pendiente_agricultor', 'Pendiente Agricultor'),
-    ('aceptado', 'Aceptado'),
-    ('rechazado', 'Rechazado'),
-    ('pendiente', 'Pendiente de pago'),
-    ('pagado', 'Pagado'),
-    ('cancelado', 'Cancelado'),
-]
+        ('pendiente_agricultor', 'Pendiente Agricultor'),
+        ('aceptado', 'Aceptado'),
+        ('rechazado', 'Rechazado'),
+        ('pendiente', 'Pendiente de pago'),
+        ('pagado', 'Pagado'),
+        ('cancelado', 'Cancelado'),
+    ]
     publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, related_name='negociaciones')
     comerciante = models.ForeignKey(User, on_delete=models.CASCADE, related_name='negociaciones')
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
@@ -78,6 +79,7 @@ class Favorito(models.Model):
     def __str__(self):
         return f"{self.comerciante.username} ❤️ {self.publicacion.producto}"
 
+
 class Notificacion(models.Model):
     TIPOS = [
         ('visita', 'Visita'),
@@ -93,6 +95,13 @@ class Notificacion(models.Model):
     mensaje = models.TextField()
     leida = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
+    negociacion = models.ForeignKey(
+        Negociacion,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='notificaciones'
+    )
 
     class Meta:
         ordering = ['-creado_en']

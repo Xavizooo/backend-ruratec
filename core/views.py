@@ -213,11 +213,10 @@ def crear_negociacion(request, pk):
     except Publicacion.DoesNotExist:
         return Response({"error": "No encontrada"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Evitar crear duplicados si ya tiene una negociación activa para esta publicación
     negociacion_existente = Negociacion.objects.filter(
         comerciante=request.user,
         publicacion=publicacion,
-        estado='esperando'
+        estado='pendiente_agricultor'
     ).first()
     if negociacion_existente:
         serializer = NegociacionSerializer(negociacion_existente)
@@ -236,19 +235,19 @@ def crear_negociacion(request, pk):
         cantidad=cantidad,
         total=total,
         referencia=referencia,
-        estado='esperando',
+        estado='pendiente_agricultor',
     )
 
     Notificacion.objects.create(
         usuario=publicacion.vendedor,
         tipo='negociacion',
-        titulo='Nueva negociación 🛒',
+        titulo='Nueva negociación',
         mensaje=f'{request.user.first_name} quiere comprar {cantidad} {publicacion.stock_unidad} de {publicacion.producto} por ${total:,.0f}.',
+        negociacion=negociacion,
     )
 
     serializer = NegociacionSerializer(negociacion)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 
 @api_view(['GET'])
 def estado_negociacion(request, pk):
