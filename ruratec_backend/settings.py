@@ -63,7 +63,8 @@ WSGI_APPLICATION = 'ruratec_backend.wsgi.application'
 # Base de datos Railway PostgreSQL
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://postgres:AyFUqMVmTFilSexdwMNSKgnPKZzkAcQt@postgres.railway.internal:5432/railway'
+        env='DATABASE_URL',
+        default='sqlite:///db.sqlite3'
     )
 }
 
