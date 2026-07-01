@@ -242,7 +242,7 @@ def crear_negociacion(request, pk):
         usuario=publicacion.vendedor,
         tipo='negociacion',
         titulo='Nueva negociación',
-        mensaje=f'{request.user.first_name} quiere comprar {cantidad} {publicacion.stock_unidad} de {publicacion.producto} por ${total:,.0f}.',
+        mensaje=f'{request.user.first_name} quiere comprar {cantidad} {publicacion.unidad} de {publicacion.producto} por ${total:,.0f}.',
         negociacion=negociacion,
     )
 
@@ -265,16 +265,21 @@ def estado_negociacion(request, pk):
 @api_view(['GET'])
 def negociacion_activa_por_publicacion(request, pk):
     """
-    Devuelve la negociación activa (esperando o aceptado) del comerciante
-    para una publicación específica. Usado al entrar al detalle para redirigir.
+    Devuelve la negociación activa (pendiente de respuesta o ya aceptada)
+    del comerciante para una publicación específica. Se usa al entrar al
+    detalle para redirigir automáticamente a EsperandoPago o Pago.
     """
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
 
+    # ✅ FIX: 'esperando' no existe en Negociacion.ESTADOS — el estado real
+    # mientras se espera respuesta del agricultor es 'pendiente_agricultor'.
+    # Con el valor viejo, este filtro nunca encontraba nada y el auto-redirect
+    # a EsperandoPagoScreen no se disparaba.
     negociacion = Negociacion.objects.filter(
         comerciante=request.user,
         publicacion_id=pk,
-        estado__in=['esperando', 'aceptado']
+        estado__in=['pendiente_agricultor', 'aceptado']
     ).order_by('-creado_en').first()
 
     if negociacion:

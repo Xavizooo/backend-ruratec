@@ -43,7 +43,14 @@ class PublicacionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Publicacion
-        fields = ['id', 'vendedor', 'vendedor_nombre', 'vendedor_telefono', 'producto', 'descripcion', 'precio', 'unidad', 'stock', 'stock_unidad', 'ubicacion', 'imagen', 'imagen_url', 'creado_en']
+        # ✅ 'stock_unidad' eliminado (ya no existe en el modelo).
+        # ✅ 'peso_kg_unidad' agregado — opcional, solo se envía si
+        # el frontend lo incluye (unidad distinta a 'kg').
+        fields = [
+            'id', 'vendedor', 'vendedor_nombre', 'vendedor_telefono',
+            'producto', 'descripcion', 'precio', 'unidad', 'peso_kg_unidad',
+            'stock', 'ubicacion', 'imagen', 'imagen_url', 'creado_en',
+        ]
         read_only_fields = ['vendedor', 'creado_en']
 
     def get_vendedor_nombre(self, obj):
@@ -109,7 +116,6 @@ class FavoritoSerializer(serializers.ModelSerializer):
 
 
 class NotificacionSerializer(serializers.ModelSerializer):
-    # ✅ Expone el ID de la negociación para poder responder desde notificaciones
     negociacion_id = serializers.SerializerMethodField()
 
     class Meta:

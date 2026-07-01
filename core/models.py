@@ -24,12 +24,19 @@ class Publicacion(models.Model):
     producto = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True, null=True)
     precio = models.IntegerField()
+    # ✅ Unidad única: aplica tanto al precio como al stock (elimina la
+    # inconsistencia de tener "unidad" y "stock_unidad" por separado).
     unidad = models.CharField(max_length=50)
+    # ✅ NUEVO: peso real en kg de 1 unidad, solo relevante cuando
+    # `unidad` != 'kg'. Permite normalizar/comparar publicaciones sin
+    # forzar al agricultor a usar siempre kilogramos.
+    peso_kg_unidad = models.DecimalField(
+        max_digits=10, decimal_places=3, blank=True, null=True
+    )
     ubicacion = models.CharField(max_length=100)
     imagen = CloudinaryField('imagen', blank=True, null=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     stock = models.IntegerField(default=0)
-    stock_unidad = models.CharField(max_length=50, blank=True, null=True)
 
     def __str__(self):
         return f"{self.producto} - {self.vendedor.username}"
