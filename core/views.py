@@ -566,31 +566,16 @@ def canasta_familiar(request):
         {"producto": "sal",              "nombre_display": "Sal",                 "precio": 1200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
     ]
 
-    # ✅ FIX: antes el for recorría PRODUCTOS_CANASTA (de sipsa.py), que es
-    # una lista distinta y más corta que productos_referencia (de este
-    # archivo). Cualquier producto agregado solo aquí nunca aparecía porque
-    # el bucle jamás pasaba por su clave. Ahora productos_referencia es la
-    # fuente de verdad: siempre aparece todo lo que está en esta lista, y
-    # si SIPSA responde con un precio real para ese producto, lo actualiza.
-    try:
-        from .sipsa import consultar_precio_sipsa
-        resultados = []
-        for ref in productos_referencia:
-            try:
-                data = consultar_precio_sipsa(ref["producto"])
-            except Exception:
-                data = None
-            if data and data.get("precio"):
-                item = {**ref, **data}
-                item["nombre_display"] = ref["nombre_display"]
-                resultados.append(item)
-            else:
-                resultados.append(ref)
-    except Exception:
-        resultados = productos_referencia
-
+    # ✅ FIX: se quitó por completo la llamada a SIPSA. Ese servicio externo
+    # se demora mucho o directamente se cae, y como Django espera esa
+    # respuesta antes de contestar, el request del frontend hacía timeout
+    # y mostraba "No se pudo cargar la información" aunque los datos
+    # manuales de productos_referencia estuvieran perfectos. Por ahora
+    # esta lista manual ES la fuente de datos; el día que quieran
+    # reactivar SIPSA, hay que hacerlo de forma asíncrona (tarea en
+    # background que actualice una tabla/caché) y no en este request.
     return Response({
-        "productos": resultados,
+        "productos": productos_referencia,
         "mercado": "Corabastos - Bogotá",
         "fecha_actualizacion": "Mayo 2026"
     })
