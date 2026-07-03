@@ -43,9 +43,6 @@ class PublicacionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Publicacion
-        # ✅ 'stock_unidad' eliminado (ya no existe en el modelo).
-        # ✅ 'peso_kg_unidad' agregado — opcional, solo se envía si
-        # el frontend lo incluye (unidad distinta a 'kg').
         fields = [
             'id', 'vendedor', 'vendedor_nombre', 'vendedor_telefono',
             'producto', 'descripcion', 'precio', 'unidad', 'peso_kg_unidad',
@@ -117,10 +114,20 @@ class FavoritoSerializer(serializers.ModelSerializer):
 
 class NotificacionSerializer(serializers.ModelSerializer):
     negociacion_id = serializers.SerializerMethodField()
+    # ✅ NUEVO: expone el estado actual de la negociación asociada
+    # (pendiente_agricultor / aceptado / rechazado / pagado / cancelado).
+    # El frontend lo usa para decidir si todavía debe mostrar los botones
+    # de Aceptar/Rechazar, en vez de basarse solo en si negociacion_id
+    # existe (eso nunca cambiaba, aunque la negociación ya hubiera sido
+    # respondida, y por eso los botones "revivían" al volver a la pantalla).
+    negociacion_estado = serializers.SerializerMethodField()
 
     class Meta:
         model = Notificacion
-        fields = ['id', 'tipo', 'titulo', 'mensaje', 'leida', 'creado_en', 'negociacion_id']
+        fields = ['id', 'tipo', 'titulo', 'mensaje', 'leida', 'creado_en', 'negociacion_id', 'negociacion_estado']
 
     def get_negociacion_id(self, obj):
         return obj.negociacion.id if obj.negociacion else None
+
+    def get_negociacion_estado(self, obj):
+        return obj.negociacion.estado if obj.negociacion else None

@@ -226,7 +226,7 @@ def crear_negociacion(request, pk):
     if not cantidad:
         return Response({"error": "Cantidad requerida"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # ✅ NUEVO: valida la cantidad mínima definida por el agricultor.
+    # ✅ Valida la cantidad mínima definida por el agricultor.
     # Se valida aquí (no solo en el frontend) porque cualquiera podría
     # llamar este endpoint directamente saltándose la app.
     if publicacion.cantidad_minima and float(cantidad) < float(publicacion.cantidad_minima):
@@ -281,10 +281,6 @@ def negociacion_activa_por_publicacion(request, pk):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
 
-    # ✅ FIX: 'esperando' no existe en Negociacion.ESTADOS — el estado real
-    # mientras se espera respuesta del agricultor es 'pendiente_agricultor'.
-    # Con el valor viejo, este filtro nunca encontraba nada y el auto-redirect
-    # a EsperandoPagoScreen no se disparaba.
     negociacion = Negociacion.objects.filter(
         comerciante=request.user,
         publicacion_id=pk,
@@ -325,6 +321,12 @@ def responder_negociacion(request, pk):
     if accion == 'aceptar':
         negociacion.estado = 'aceptado'
         negociacion.save()
+        # ✅ FIX: marca como leída la notificación original de "nueva negociación"
+        # que recibió el agricultor. Antes solo se creaba la notificación nueva
+        # para el comerciante, pero la notificación original nunca se tocaba,
+        # así que al volver a Notificaciones seguía apareciendo con los botones
+        # de Aceptar/Rechazar como si nada hubiera pasado.
+        Notificacion.objects.filter(negociacion=negociacion, tipo='negociacion').update(leida=True)
         Notificacion.objects.create(
             usuario=negociacion.comerciante,
             tipo='aceptado',
@@ -336,6 +338,8 @@ def responder_negociacion(request, pk):
     elif accion == 'rechazar':
         negociacion.estado = 'rechazado'
         negociacion.save()
+        # ✅ Mismo fix que arriba, para el caso de rechazo.
+        Notificacion.objects.filter(negociacion=negociacion, tipo='negociacion').update(leida=True)
         Notificacion.objects.create(
             usuario=negociacion.comerciante,
             tipo='rechazado',
@@ -562,18 +566,26 @@ def canasta_familiar(request):
         {"producto": "sal",              "nombre_display": "Sal",                 "precio": 1200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
     ]
 
+    # ✅ FIX: antes el for recorría PRODUCTOS_CANASTA (de sipsa.py), que es
+    # una lista distinta y más corta que productos_referencia (de este
+    # archivo). Cualquier producto agregado solo aquí nunca aparecía porque
+    # el bucle jamás pasaba por su clave. Ahora productos_referencia es la
+    # fuente de verdad: siempre aparece todo lo que está en esta lista, y
+    # si SIPSA responde con un precio real para ese producto, lo actualiza.
     try:
-        from .sipsa import consultar_precio_sipsa, PRODUCTOS_CANASTA
+        from .sipsa import consultar_precio_sipsa
         resultados = []
-        for nombre, clave in PRODUCTOS_CANASTA:
-            data = consultar_precio_sipsa(clave)
-            if data.get("precio"):
-                data["nombre_display"] = nombre
-                resultados.append(data)
+        for ref in productos_referencia:
+            try:
+                data = consultar_precio_sipsa(ref["producto"])
+            except Exception:
+                data = None
+            if data and data.get("precio"):
+                item = {**ref, **data}
+                item["nombre_display"] = ref["nombre_display"]
+                resultados.append(item)
             else:
-                ref = next((p for p in productos_referencia if p["producto"] == clave), None)
-                if ref:
-                    resultados.append(ref)
+                resultados.append(ref)
     except Exception:
         resultados = productos_referencia
 
