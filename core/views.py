@@ -15,6 +15,7 @@ from .serializers import (
 )
 from .models import Perfil, Publicacion, VisitaPublicacion, Negociacion, Favorito, Notificacion
 from .notificaciones import enviar_notificacion
+from .ocr import validar_documento
 
 
 # ─────────────────────────────────────────────
@@ -43,7 +44,10 @@ class CustomAuthToken(ObtainAuthToken):
             'email': user.email,
             'nombre': user.first_name if user.first_name else user.username,
             'rol': perfil.rol if perfil else "No definido",
-            'ubicacion': perfil.ubicacion if perfil else "No definida"
+            'ubicacion': perfil.ubicacion if perfil else "No definida",
+            # ✅ NUEVO: el frontend usa esto para decidir si mostrar el
+            # aviso/pantalla de "sube tu cédula para verificar tu cuenta".
+            'documento_validado': perfil.documento_validado if perfil else False,
         })
 
 
@@ -69,6 +73,8 @@ def perfil_usuario(request):
             'rol': perfil.rol if perfil else None,
             'ubicacion': perfil.ubicacion if perfil else None,
             'foto': request.build_absolute_uri(perfil.foto.url) if perfil and perfil.foto else None,
+            'numero_cedula': perfil.numero_cedula if perfil else None,
+            'documento_validado': perfil.documento_validado if perfil else False,
         })
 
     if request.method == 'PUT':
@@ -82,6 +88,56 @@ def perfil_usuario(request):
                 perfil.foto = request.FILES['foto']
             perfil.save()
         return Response({"message": "Perfil actualizado correctamente"})
+
+
+@api_view(['POST'])
+def subir_documento_identidad(request):
+    """
+    Recibe la foto de la cédula (y opcionalmente el número, si no se
+    guardó antes en el registro), la sube a Cloudinary a través del
+    campo foto_cedula, y corre el OCR para validar automáticamente
+    contra el nombre/apellido/número que el usuario ya tiene registrado.
+    No hay revisión manual: documento_validado queda True o False según
+    el resultado del OCR, sin intervención humana.
+    """
+    if not request.user.is_authenticated:
+        return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    perfil = Perfil.objects.filter(user=request.user).first()
+    if not perfil:
+        return Response({"error": "Perfil no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+    if 'foto_cedula' not in request.FILES:
+        return Response({"error": "Debes adjuntar la foto de la cédula"}, status=status.HTTP_400_BAD_REQUEST)
+
+    numero_cedula = request.data.get('numero_cedula') or perfil.numero_cedula
+    if not numero_cedula:
+        return Response({"error": "numero_cedula requerido"}, status=status.HTTP_400_BAD_REQUEST)
+
+    perfil.numero_cedula = numero_cedula
+    perfil.foto_cedula = request.FILES['foto_cedula']
+    perfil.save()  # necesario primero para que Cloudinary genere la URL pública
+
+    validado, texto_crudo = validar_documento(
+        numero_cedula,
+        request.user.first_name,
+        request.user.last_name,
+        perfil.foto_cedula.url,
+    )
+
+    perfil.documento_validado = validado
+    perfil.ocr_texto_crudo = (texto_crudo or "")[:2000]
+    perfil.save()
+
+    return Response({
+        "documento_validado": validado,
+        "message": (
+            "Documento validado correctamente."
+            if validado else
+            "No pudimos confirmar automáticamente los datos. Verifica que la "
+            "foto sea legible y que el nombre/cédula coincidan con tu registro."
+        ),
+    })
 
 
 @api_view(['POST'])

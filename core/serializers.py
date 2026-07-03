@@ -7,16 +7,20 @@ class UserSerializer(serializers.ModelSerializer):
     telefono = serializers.CharField(write_only=True, required=False)
     rol = serializers.ChoiceField(choices=['Agricultor', 'Comerciante'], write_only=True)
     ubicacion = serializers.CharField(write_only=True, required=False)
+    # ✅ NUEVO: opcional en el registro. La foto del documento se sube
+    # después, ya autenticado, contra el endpoint subir_documento_identidad.
+    numero_cedula = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email', 'password', 'telefono', 'rol', 'ubicacion']
+        fields = ['first_name', 'last_name', 'email', 'password', 'telefono', 'rol', 'ubicacion', 'numero_cedula']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
         telefono = validated_data.pop('telefono', None)
         rol = validated_data.pop('rol', 'Agricultor')
         ubicacion = validated_data.pop('ubicacion', None)
+        numero_cedula = validated_data.pop('numero_cedula', None)
 
         user = User.objects.create_user(
             username=validated_data['email'],
@@ -30,7 +34,8 @@ class UserSerializer(serializers.ModelSerializer):
             user=user,
             telefono=telefono,
             rol=rol,
-            ubicacion=ubicacion
+            ubicacion=ubicacion,
+            numero_cedula=numero_cedula,
         )
 
         return user

@@ -15,27 +15,31 @@ class Perfil(models.Model):
     foto = CloudinaryField('foto', blank=True, null=True)
     push_token = models.CharField(max_length=200, blank=True, null=True)
 
+    # ✅ NUEVO: verificación de identidad por OCR
+    numero_cedula = models.CharField(max_length=20, blank=True, null=True)
+    foto_cedula = CloudinaryField('foto_cedula', blank=True, null=True)
+    documento_validado = models.BooleanField(default=False)
+    ocr_texto_crudo = models.TextField(blank=True, null=True)
+
     def __str__(self):
         return f"Perfil de {self.user.username} - {self.rol}"
 
 
 class Publicacion(models.Model):
+    ENTREGA_CHOICES = [
+        ("retiro_finca", "Solo retiro en finca"),
+        ("casco_urbano", "Llevo al casco urbano"),
+        ("transporte_propio", "Transporte propio al destino"),
+    ]
+
     vendedor = models.ForeignKey(User, on_delete=models.CASCADE)
     producto = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True, null=True)
     precio = models.IntegerField()
-    # ✅ Unidad única: aplica tanto al precio como al stock (elimina la
-    # inconsistencia de tener "unidad" y "stock_unidad" por separado).
     unidad = models.CharField(max_length=50)
-    # ✅ NUEVO: peso real en kg de 1 unidad, solo relevante cuando
-    # `unidad` != 'kg'. Permite normalizar/comparar publicaciones sin
-    # forzar al agricultor a usar siempre kilogramos.
     peso_kg_unidad = models.DecimalField(
         max_digits=10, decimal_places=3, blank=True, null=True
     )
-    # ✅ NUEVO: cantidad mínima de compra, opcional. El agricultor la define
-    # al publicar para evitar solicitudes irrisorias (ej: comprar 1kg de
-    # una publicación de 520kg). Si es NULL, no hay mínimo.
     cantidad_minima = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True
     )
@@ -43,6 +47,7 @@ class Publicacion(models.Model):
     imagen = CloudinaryField('imagen', blank=True, null=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     stock = models.IntegerField(default=0)
+    capacidad_entrega = models.CharField(max_length=20, choices=ENTREGA_CHOICES, blank=True)
 
     def __str__(self):
         return f"{self.producto} - {self.vendedor.username}"
@@ -121,10 +126,3 @@ class Notificacion(models.Model):
 
     def __str__(self):
         return f"{self.usuario.username} - {self.titulo}"
-    
-ENTREGA_CHOICES = [
-    ("retiro_finca", "Solo retiro en finca"),
-    ("casco_urbano", "Llevo al casco urbano"),
-    ("transporte_propio", "Transporte propio al destino"),
-]
-capacidad_entrega = models.CharField(max_length=20, choices=ENTREGA_CHOICES, blank=True)
