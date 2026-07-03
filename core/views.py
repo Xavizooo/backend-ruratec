@@ -620,4 +620,4 @@ def canasta_familiar(request):
         "productos": productos_referencia,
         "mercado": "Corabastos - Bogotá",
         "fecha_actualizacion": "Mayo 2026"
-    })1
+    })
