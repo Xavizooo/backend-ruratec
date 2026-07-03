@@ -226,6 +226,15 @@ def crear_negociacion(request, pk):
     if not cantidad:
         return Response({"error": "Cantidad requerida"}, status=status.HTTP_400_BAD_REQUEST)
 
+    # ✅ NUEVO: valida la cantidad mínima definida por el agricultor.
+    # Se valida aquí (no solo en el frontend) porque cualquiera podría
+    # llamar este endpoint directamente saltándose la app.
+    if publicacion.cantidad_minima and float(cantidad) < float(publicacion.cantidad_minima):
+        return Response(
+            {"error": f"La cantidad mínima de compra es {publicacion.cantidad_minima} {publicacion.unidad}"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
     total = float(cantidad) * publicacion.precio
     referencia = f"RURATEC-{uuid.uuid4().hex[:10].upper()}"
 

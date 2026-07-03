@@ -49,7 +49,7 @@ class PublicacionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'vendedor', 'vendedor_nombre', 'vendedor_telefono',
             'producto', 'descripcion', 'precio', 'unidad', 'peso_kg_unidad',
-            'stock', 'ubicacion', 'imagen', 'imagen_url', 'creado_en',
+            'stock', 'cantidad_minima', 'ubicacion', 'imagen', 'imagen_url', 'creado_en',
         ]
         read_only_fields = ['vendedor', 'creado_en']
 

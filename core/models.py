@@ -33,6 +33,12 @@ class Publicacion(models.Model):
     peso_kg_unidad = models.DecimalField(
         max_digits=10, decimal_places=3, blank=True, null=True
     )
+    # ✅ NUEVO: cantidad mínima de compra, opcional. El agricultor la define
+    # al publicar para evitar solicitudes irrisorias (ej: comprar 1kg de
+    # una publicación de 520kg). Si es NULL, no hay mínimo.
+    cantidad_minima = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True
+    )
     ubicacion = models.CharField(max_length=100)
     imagen = CloudinaryField('imagen', blank=True, null=True)
     creado_en = models.DateTimeField(auto_now_add=True)
