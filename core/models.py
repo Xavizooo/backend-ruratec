@@ -121,3 +121,10 @@ class Notificacion(models.Model):
 
     def __str__(self):
         return f"{self.usuario.username} - {self.titulo}"
+    
+ENTREGA_CHOICES = [
+    ("retiro_finca", "Solo retiro en finca"),
+    ("casco_urbano", "Llevo al casco urbano"),
+    ("transporte_propio", "Transporte propio al destino"),
+]
+capacidad_entrega = models.CharField(max_length=20, choices=ENTREGA_CHOICES, blank=True)
