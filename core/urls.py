@@ -7,7 +7,7 @@ from .views import (
     cancelar_negociacion, estado_negociacion,
     negociacion_activa_por_publicacion,
     responder_negociacion, negociaciones_agricultor,
-    perfil_usuario, guardar_push_token,
+    perfil_usuario, guardar_push_token, subir_documento_identidad,
     listar_favoritos, agregar_favorito, eliminar_favorito,
     canasta_familiar,
     editar_publicacion, eliminar_publicacion,
@@ -20,8 +20,9 @@ urlpatterns = [
     path('usuarios/', registrar_usuario,         name='registro'),
 
     # Perfil
-    path('perfil/',      perfil_usuario,    name='perfil'),
-    path('push-token/',  guardar_push_token, name='guardar_push_token'),
+    path('perfil/',           perfil_usuario,           name='perfil'),
+    path('perfil/documento/', subir_documento_identidad, name='subir_documento_identidad'),
+    path('push-token/',       guardar_push_token,        name='guardar_push_token'),
 
     # Canasta
     path('canasta/', canasta_familiar, name='canasta-familiar'),

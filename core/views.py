@@ -45,8 +45,6 @@ class CustomAuthToken(ObtainAuthToken):
             'nombre': user.first_name if user.first_name else user.username,
             'rol': perfil.rol if perfil else "No definido",
             'ubicacion': perfil.ubicacion if perfil else "No definida",
-            # ✅ NUEVO: el frontend usa esto para decidir si mostrar el
-            # aviso/pantalla de "sube tu cédula para verificar tu cuenta".
             'documento_validado': perfil.documento_validado if perfil else False,
         })
 
@@ -264,6 +262,15 @@ def ver_visitas(request, pk):
 def crear_negociacion(request, pk):
     if not request.user.is_authenticated:
         return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # ✅ NUEVO: no se puede negociar sin haber validado el documento de identidad
+    perfil = Perfil.objects.filter(user=request.user).first()
+    if not perfil or not perfil.documento_validado:
+        return Response(
+            {"error": "Debes verificar tu documento de identidad antes de poder negociar."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     try:
         publicacion = Publicacion.objects.get(pk=pk)
     except Publicacion.DoesNotExist:
@@ -283,8 +290,6 @@ def crear_negociacion(request, pk):
         return Response({"error": "Cantidad requerida"}, status=status.HTTP_400_BAD_REQUEST)
 
     # ✅ Valida la cantidad mínima definida por el agricultor.
-    # Se valida aquí (no solo en el frontend) porque cualquiera podría
-    # llamar este endpoint directamente saltándose la app.
     if publicacion.cantidad_minima and float(cantidad) < float(publicacion.cantidad_minima):
         return Response(
             {"error": f"La cantidad mínima de compra es {publicacion.cantidad_minima} {publicacion.unidad}"},
@@ -313,6 +318,7 @@ def crear_negociacion(request, pk):
 
     serializer = NegociacionSerializer(negociacion)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 @api_view(['GET'])
 def estado_negociacion(request, pk):
@@ -377,11 +383,6 @@ def responder_negociacion(request, pk):
     if accion == 'aceptar':
         negociacion.estado = 'aceptado'
         negociacion.save()
-        # ✅ FIX: marca como leída la notificación original de "nueva negociación"
-        # que recibió el agricultor. Antes solo se creaba la notificación nueva
-        # para el comerciante, pero la notificación original nunca se tocaba,
-        # así que al volver a Notificaciones seguía apareciendo con los botones
-        # de Aceptar/Rechazar como si nada hubiera pasado.
         Notificacion.objects.filter(negociacion=negociacion, tipo='negociacion').update(leida=True)
         Notificacion.objects.create(
             usuario=negociacion.comerciante,
@@ -394,7 +395,6 @@ def responder_negociacion(request, pk):
     elif accion == 'rechazar':
         negociacion.estado = 'rechazado'
         negociacion.save()
-        # ✅ Mismo fix que arriba, para el caso de rechazo.
         Notificacion.objects.filter(negociacion=negociacion, tipo='negociacion').update(leida=True)
         Notificacion.objects.create(
             usuario=negociacion.comerciante,
@@ -528,7 +528,6 @@ def marcar_todas_leidas(request):
 @permission_classes([IsAuthenticated])
 def canasta_familiar(request):
     productos_referencia = [
-        # ── TUBÉRCULOS ──────────────────────────────────────────
         {"producto": "papa_pastusa",     "nombre_display": "Papa pastusa",       "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "papa_criolla",     "nombre_display": "Papa criolla",        "precio": 2500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "papa_r12",         "nombre_display": "Papa R-12",           "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -538,7 +537,6 @@ def canasta_familiar(request):
         {"producto": "yuca",             "nombre_display": "Yuca",                "precio": 1400,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "name",             "nombre_display": "Ñame",                "precio": 2200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "batata",           "nombre_display": "Batata",              "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        # ── CEREALES Y GRANOS ────────────────────────────────────
         {"producto": "arroz",            "nombre_display": "Arroz corriente",     "precio": 1800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "arroz_diana",      "nombre_display": "Arroz Diana",         "precio": 2200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "lenteja",          "nombre_display": "Lenteja",             "precio": 4200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -549,7 +547,6 @@ def canasta_familiar(request):
         {"producto": "cuchuco_trigo",    "nombre_display": "Cuchuco de trigo",    "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "harina_trigo",     "nombre_display": "Harina de trigo",     "precio": 2800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "pasta",            "nombre_display": "Pasta",               "precio": 3800,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        # ── HORTALIZAS ───────────────────────────────────────────
         {"producto": "zanahoria",        "nombre_display": "Zanahoria",           "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "cebolla_blanca",   "nombre_display": "Cebolla blanca",      "precio": 1500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "cebolla_roja",     "nombre_display": "Cebolla roja",        "precio": 1900,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -576,7 +573,6 @@ def canasta_familiar(request):
         {"producto": "alcachofa",        "nombre_display": "Alcachofa",           "precio": 4000,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "haba_verde",       "nombre_display": "Haba verde",          "precio": 4500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "pimenton",         "nombre_display": "Pimentón",            "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        # ── FRUTAS ───────────────────────────────────────────────
         {"producto": "platano_harton",   "nombre_display": "Plátano hartón",      "precio": 1400,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "platano_colicero", "nombre_display": "Plátano colicero",    "precio": 1200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "banano_uraba",     "nombre_display": "Banano Urabá",        "precio": 2200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -608,7 +604,6 @@ def canasta_familiar(request):
         {"producto": "granadilla",       "nombre_display": "Granadilla",          "precio": 5500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "pitahaya",         "nombre_display": "Pitahaya amarilla",   "precio": 15000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "coco",             "nombre_display": "Coco",                "precio": 3000,  "fecha": "Mayo 2026", "unidad": "und", "fuente": "Corabastos"},
-        # ── PROTEÍNAS Y LÁCTEOS ──────────────────────────────────
         {"producto": "huevo",            "nombre_display": "Huevo rojo A",        "precio": 450,   "fecha": "Mayo 2026", "unidad": "und", "fuente": "Corabastos"},
         {"producto": "pollo",            "nombre_display": "Pollo entero",        "precio": 7200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "carne_res",        "nombre_display": "Carne de res",        "precio": 18000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
@@ -616,22 +611,13 @@ def canasta_familiar(request):
         {"producto": "leche",            "nombre_display": "Leche pasteurizada",  "precio": 3000,  "fecha": "Mayo 2026", "unidad": "lt", "fuente": "Corabastos"},
         {"producto": "queso",            "nombre_display": "Queso campesino",     "precio": 12000, "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "panela",           "nombre_display": "Panela",              "precio": 3500,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
-        # ── PROCESADOS ───────────────────────────────────────────
         {"producto": "aceite",           "nombre_display": "Aceite vegetal",      "precio": 9000,  "fecha": "Mayo 2026", "unidad": "lt", "fuente": "Corabastos"},
         {"producto": "azucar",           "nombre_display": "Azúcar blanca",       "precio": 3200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
         {"producto": "sal",              "nombre_display": "Sal",                 "precio": 1200,  "fecha": "Mayo 2026", "unidad": "kg", "fuente": "Corabastos"},
     ]
 
-    # ✅ FIX: se quitó por completo la llamada a SIPSA. Ese servicio externo
-    # se demora mucho o directamente se cae, y como Django espera esa
-    # respuesta antes de contestar, el request del frontend hacía timeout
-    # y mostraba "No se pudo cargar la información" aunque los datos
-    # manuales de productos_referencia estuvieran perfectos. Por ahora
-    # esta lista manual ES la fuente de datos; el día que quieran
-    # reactivar SIPSA, hay que hacerlo de forma asíncrona (tarea en
-    # background que actualice una tabla/caché) y no en este request.
     return Response({
         "productos": productos_referencia,
         "mercado": "Corabastos - Bogotá",
         "fecha_actualizacion": "Mayo 2026"
-    })
+    })1
